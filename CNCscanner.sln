@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.32929.386
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CNCscanner", "CNCscanner.csproj", "{3CCC1B4D-EF72-4486-9C77-71214095E6A9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3CCC1B4D-EF72-4486-9C77-71214095E6A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3CCC1B4D-EF72-4486-9C77-71214095E6A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3CCC1B4D-EF72-4486-9C77-71214095E6A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3CCC1B4D-EF72-4486-9C77-71214095E6A9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5846E190-BBAA-4C61-8C91-919C208FAD5A}
+	EndGlobalSection
+EndGlobal
