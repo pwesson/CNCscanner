@@ -33,13 +33,21 @@ using System.IO.Ports;
 using System.Threading;
 using Util.EventMessages;
 
+
 namespace CNCscanner
 {
     public partial class FormMain : Form
     {
-        public static SerialPort CNCscanner = new SerialPort();
+        // Global variables
+        string[] lines;
+        int ptr = 0;
+        bool isProgramRunning = false;
 
-        private String CNCserialMessage = "";
+        public static SerialPort SerialPortCNC = new SerialPort();
+        public static SerialPort SerialPortArduino = new SerialPort();
+
+        private String SerialMessageCNC = "";
+        private String SerialMessageArduino = "";
 
         public FormMain()
         {
@@ -50,16 +58,19 @@ namespace CNCscanner
             GlobalEventMessages.TheEvent += new GlobalEventHandler(ShowOnScreen);
 
             // When Serial data is recieved through the CNCscanner port, call this method
-            CNCscanner.DataReceived += new SerialDataReceivedEventHandler(SerialDataReceived);
+            SerialPortCNC.DataReceived += new SerialDataReceivedEventHandler(CNCSerialDataReceived);
+            SerialPortArduino.DataReceived += new SerialDataReceivedEventHandler(SerialPortArduinoDataReceived);
 
             //Setup the SerialPorts List
             foreach (string port in SerialPort.GetPortNames())
             {
                 // Add the next port to the list
                 comboBoxPorts.Items.Add(port);
+                comboBoxDist.Items.Add(port);
 
                 // Select this last found port
                 comboBoxPorts.Text = port;
+                comboBoxDist.Text = port;
             }
 
         }
@@ -74,12 +85,12 @@ namespace CNCscanner
         {
        
             // If the port is open, close it.
-            if (CNCscanner.IsOpen)
+            if (SerialPortCNC.IsOpen)
             {
                 try
                 {
                     // Close in another thread to avoid main thread hanging
-                    Thread CloseDown = new Thread(new ThreadStart(CloseSerialOnExit));
+                    Thread CloseDown = new Thread(new ThreadStart(CloseCNCSerialOnExit));
                     CloseDown.Start();
 
                     // Change the button text to "connect"
@@ -96,16 +107,16 @@ namespace CNCscanner
             {
                 // Set the port's settings to connect to the CNCscanner
 
-                CNCscanner.BaudRate = 115200;                                           // BaudRate
-                CNCscanner.DataBits = 8;                                                // DataBits
-                CNCscanner.StopBits = (StopBits)Enum.Parse(typeof(StopBits), "One");    // StopBits
-                CNCscanner.Parity = (Parity)Enum.Parse(typeof(Parity), "None");         // Parity
-                CNCscanner.PortName = comboBoxPorts.Text;                               // Port Number
+                SerialPortCNC.BaudRate = 115200;                                           // BaudRate
+                SerialPortCNC.DataBits = 8;                                                // DataBits
+                SerialPortCNC.StopBits = (StopBits)Enum.Parse(typeof(StopBits), "One");    // StopBits
+                SerialPortCNC.Parity = (Parity)Enum.Parse(typeof(Parity), "None");         // Parity
+                SerialPortCNC.PortName = comboBoxPorts.Text;                               // Port Number
 
                 try
                 {
                     // Open the Serial port
-                    CNCscanner.Open();
+                    SerialPortCNC.Open();
 
                     // Change the button text to "disconnect"
                     GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("btnConnect", "Disconnect"));
@@ -119,36 +130,62 @@ namespace CNCscanner
             }
         }
 
-        private void SerialDataReceived(object sender, SerialDataReceivedEventArgs e)
+        private void CNCSerialDataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             try
             {
                 // If the com port has been closed, do nothing
-                if (!CNCscanner.IsOpen) return;
+                if (!SerialPortCNC.IsOpen) return;
 
                 // Read the Serial Port
-                string data = CNCscanner.ReadExisting();
+                string data = SerialPortCNC.ReadExisting();
 
                 // Add to messages received so far. 
                 // This is ok for small UAT as it grows in size
-                CNCserialMessage += data;
+                SerialMessageCNC += data;
 
                 // Send to mainform to show
-                GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBox2", CNCserialMessage));
+                GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBox2", SerialMessageCNC));
             }
             catch (Exception ex)
             {
                 // Update User with error message
                 MessageBox.Show(ex.Message);
             }
+
+            // We are runnign a program, so want to issue the next command
+            if (isProgramRunning)
+            {
+                // Pause for 1 second
+                System.Threading.Thread.Sleep(1000);
+
+                // Increase the pointer
+                ptr++;
+
+                // Split the location into its X and Y absolute position
+                string[] location = lines[ptr].Split(',');
+
+                // Create the CNCscanner instruction
+                string locInstruction = "$J=G90X" + location[0] + ".00Y" + location[1] + ".00F1917\n";
+
+                // If the com port has been closed, do nothing
+                if (!SerialPortCNC.IsOpen)
+                {
+                    return;
+                }
+
+                // Send Serial command
+                SerialPortCNC.Write(locInstruction);
+
+            }
         }
 
-        private static void CloseSerialOnExit()
+        private static void CloseCNCSerialOnExit()
         {
             try
             {
                 // Close the serial port
-                CNCscanner.Close();
+                SerialPortCNC.Close();
             }
             catch (Exception ex)
             {
@@ -162,7 +199,8 @@ namespace CNCscanner
             try
             {
                 if (e.sCont == "btnConnect") { btnConnect.Invoke(new MethodInvoker(delegate { btnConnect.Text = e.sMsg; })); }
-                
+                if (e.sCont == "btnDistance") { btnConnect.Invoke(new MethodInvoker(delegate { btnDistance.Text = e.sMsg; })); }
+
                 if (e.sCont == "textBox1") { textBox1.Invoke(new MethodInvoker(delegate { textBox1.Text = e.sMsg; })); }
                 if (e.sCont == "textBox2") { textBox2.Invoke(new MethodInvoker(delegate { textBox2.Text = e.sMsg; })); }
 
@@ -180,13 +218,13 @@ namespace CNCscanner
             // $J=G91X1.0F1917
 
             // If the com port has been closed, do nothing
-            if (!CNCscanner.IsOpen)
+            if (!SerialPortCNC.IsOpen)
             {
                 return;
             }
 
             // Send Serial command
-            CNCscanner.Write("$J=G91X1.0F1917\n");
+            SerialPortCNC.Write("$J=G91X1.0F1917\n");
 
             // Send to mainform to show
             GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBox1", "$J = G91X1.0F1917\n"));
@@ -199,13 +237,13 @@ namespace CNCscanner
             // $J=G91X-1.0F1917
 
             // If the com port has been closed, do nothing
-            if (!CNCscanner.IsOpen)
+            if (!SerialPortCNC.IsOpen)
             {
                 return;
             }
 
             // Send Serial command
-            CNCscanner.Write("$J=G91X-1.0F1917\n");
+            SerialPortCNC.Write("$J=G91X-1.0F1917\n");
 
             // Send to mainform to show
             GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBox1", "$J = G91X-1.0F1917\n"));
@@ -218,13 +256,13 @@ namespace CNCscanner
             // $J=G91Y1.0F1917
 
             // If the com port has been closed, do nothing
-            if (!CNCscanner.IsOpen)
+            if (!SerialPortCNC.IsOpen)
             {
                 return;
             }
 
             // Send Serial command
-            CNCscanner.Write("$J=G91Y1.0F1917\n");
+            SerialPortCNC.Write("$J=G91Y1.0F1917\n");
 
             // Send to mainform to show
             GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBox1", "$J = G91Y1.0F1917\n"));
@@ -237,16 +275,140 @@ namespace CNCscanner
             // $J=G91Y-1.0F1917
 
             // If the com port has been closed, do nothing
-            if (!CNCscanner.IsOpen)
+            if (!SerialPortCNC.IsOpen)
             {
                 return;
             }
 
             // Send Serial command
-            CNCscanner.Write("$J=G91Y-1.0F1917\n");
+            SerialPortCNC.Write("$J=G91Y-1.0F1917\n");
 
             // Send to mainform to show
             GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBox1", "$J = G91Y-1.0F1917\n"));
+        }
+
+
+        // ------------------------------------------------------------------------------------------------------------
+
+        private void btnDistance_Click(object sender, EventArgs e)
+        {
+            // If the port is open, close it.
+            if (SerialPortArduino.IsOpen)
+            {
+                try
+                {
+                    // Close in another thread to avoid main thread hanging
+                    Thread CloseDown = new Thread(new ThreadStart(CloseSerialPortArduinoOnExit));
+                    CloseDown.Start();
+
+                    // Change the button text to "connect"
+                    GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("btnDistance", "Connect"));
+                    GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBox2", "Arduino disconnected"));
+                }
+                catch (Exception ex)
+                {
+                    // Update User with error message
+                    MessageBox.Show(ex.Message);
+                }
+            }
+            else
+            {
+                // Set the port's settings to connect to the CNCscanner
+
+                SerialPortArduino.BaudRate = 9600;                                             // BaudRate
+                SerialPortArduino.DataBits = 8;                                                // DataBits
+                SerialPortArduino.StopBits = (StopBits)Enum.Parse(typeof(StopBits), "One");    // StopBits
+                SerialPortArduino.Parity = (Parity)Enum.Parse(typeof(Parity), "None");         // Parity
+                SerialPortArduino.PortName = comboBoxPorts.Text;                               // Port Number
+
+                try
+                {
+                    // Open the Serial port
+                    SerialPortArduino.Open();
+
+                    // Change the button text to "disconnect"
+                    GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("btnDistance", "Disconnect"));
+                    GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBox2", "btnDistance connected"));
+                }
+                catch (Exception ex)
+                {
+                    // Update User with error message
+                    MessageBox.Show(ex.Message);
+                }
+            }
+        }
+
+        private static void CloseSerialPortArduinoOnExit()
+        {
+            try
+            {
+                // Close the serial port
+                SerialPortArduino.Close();
+            }
+            catch (Exception ex)
+            {
+                // Update User with error message
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            // Take a reading
+            // Send Serial command
+            SerialPortArduino.Write("\n");
+        }
+
+        private void SerialPortArduinoDataReceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            try
+            {
+                // If the com port has been closed, do nothing
+                if (!SerialPortArduino.IsOpen) return;
+
+                // Read the Serial Port
+                string data = SerialPortArduino.ReadExisting();
+
+                // Add to messages received so far. 
+                // This is ok for small UAT as it grows in size
+                SerialMessageArduino += data;
+
+                // Send to mainform to show
+                GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBox2", SerialMessageArduino));
+            }
+            catch (Exception ex)
+            {
+                // Update User with error message
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private void btnProgram_Click(object sender, EventArgs e)
+        {
+            // This is the program
+            isProgramRunning = true;
+
+            // Read the file as one string.
+            lines = System.IO.File.ReadAllLines(@"C:\Users\Paul\source\repos\CNCscanner\bin\Debug\CNCscanner1.txt");
+
+            // Reset the pointer
+            ptr = 0;
+
+            // Split the location into its X and Y absolute position
+            string[] location = lines[ptr].Split(',');
+
+            // Create the CNCscanner instruction
+            string locInstruction = "$J=G90X" + location[0] + ".00Y" + location[1] + ".00F1917\n";
+
+            // If the com port has been closed, do nothing
+            if (!SerialPortCNC.IsOpen)
+            {
+                return;
+            }
+
+            // Send Serial command
+            SerialPortCNC.Write(locInstruction);
+
         }
     }
 }
