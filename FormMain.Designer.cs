@@ -44,9 +44,13 @@ namespace CNCscanner
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.btnDistance = new System.Windows.Forms.Button();
-            this.comboBoxDist = new System.Windows.Forms.ComboBox();
+            this.comboArduino = new System.Windows.Forms.ComboBox();
             this.button1 = new System.Windows.Forms.Button();
             this.btnProgram = new System.Windows.Forms.Button();
+            this.label1 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
+            this.btnHome = new System.Windows.Forms.Button();
+            this.btnFarAway = new System.Windows.Forms.Button();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -94,24 +98,24 @@ namespace CNCscanner
             this.textBox1.Multiline = true;
             this.textBox1.Name = "textBox1";
             this.textBox1.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.textBox1.Size = new System.Drawing.Size(856, 208);
+            this.textBox1.Size = new System.Drawing.Size(444, 405);
             this.textBox1.TabIndex = 2;
             // 
             // textBox2
             // 
-            this.textBox2.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            this.textBox2.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.textBox2.BackColor = System.Drawing.SystemColors.Info;
-            this.textBox2.Location = new System.Drawing.Point(0, 360);
+            this.textBox2.Location = new System.Drawing.Point(450, 155);
             this.textBox2.Multiline = true;
             this.textBox2.Name = "textBox2";
             this.textBox2.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.textBox2.Size = new System.Drawing.Size(856, 200);
+            this.textBox2.Size = new System.Drawing.Size(394, 405);
             this.textBox2.TabIndex = 3;
             // 
             // btnConnect
             // 
-            this.btnConnect.Location = new System.Drawing.Point(127, 25);
+            this.btnConnect.Location = new System.Drawing.Point(83, 25);
             this.btnConnect.Name = "btnConnect";
             this.btnConnect.Size = new System.Drawing.Size(70, 40);
             this.btnConnect.TabIndex = 5;
@@ -124,14 +128,14 @@ namespace CNCscanner
             this.comboBoxPorts.FormattingEnabled = true;
             this.comboBoxPorts.Location = new System.Drawing.Point(6, 36);
             this.comboBoxPorts.Name = "comboBoxPorts";
-            this.comboBoxPorts.Size = new System.Drawing.Size(100, 21);
+            this.comboBoxPorts.Size = new System.Drawing.Size(71, 21);
             this.comboBoxPorts.TabIndex = 6;
             // 
             // btnEast
             // 
-            this.btnEast.Location = new System.Drawing.Point(555, 70);
+            this.btnEast.Location = new System.Drawing.Point(507, 63);
             this.btnEast.Name = "btnEast";
-            this.btnEast.Size = new System.Drawing.Size(48, 23);
+            this.btnEast.Size = new System.Drawing.Size(45, 45);
             this.btnEast.TabIndex = 7;
             this.btnEast.Text = "East";
             this.btnEast.UseVisualStyleBackColor = true;
@@ -139,9 +143,9 @@ namespace CNCscanner
             // 
             // btnWest
             // 
-            this.btnWest.Location = new System.Drawing.Point(462, 70);
+            this.btnWest.Location = new System.Drawing.Point(405, 63);
             this.btnWest.Name = "btnWest";
-            this.btnWest.Size = new System.Drawing.Size(48, 23);
+            this.btnWest.Size = new System.Drawing.Size(45, 45);
             this.btnWest.TabIndex = 8;
             this.btnWest.Text = "West";
             this.btnWest.UseVisualStyleBackColor = true;
@@ -149,9 +153,9 @@ namespace CNCscanner
             // 
             // btnNorth
             // 
-            this.btnNorth.Location = new System.Drawing.Point(500, 41);
+            this.btnNorth.Location = new System.Drawing.Point(456, 34);
             this.btnNorth.Name = "btnNorth";
-            this.btnNorth.Size = new System.Drawing.Size(48, 23);
+            this.btnNorth.Size = new System.Drawing.Size(45, 45);
             this.btnNorth.TabIndex = 9;
             this.btnNorth.Text = "North";
             this.btnNorth.UseVisualStyleBackColor = true;
@@ -159,9 +163,9 @@ namespace CNCscanner
             // 
             // btnSouth
             // 
-            this.btnSouth.Location = new System.Drawing.Point(500, 99);
+            this.btnSouth.Location = new System.Drawing.Point(454, 85);
             this.btnSouth.Name = "btnSouth";
-            this.btnSouth.Size = new System.Drawing.Size(48, 23);
+            this.btnSouth.Size = new System.Drawing.Size(45, 45);
             this.btnSouth.TabIndex = 10;
             this.btnSouth.Text = "South";
             this.btnSouth.UseVisualStyleBackColor = true;
@@ -173,7 +177,7 @@ namespace CNCscanner
             this.groupBox1.Controls.Add(this.btnConnect);
             this.groupBox1.Location = new System.Drawing.Point(12, 41);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(210, 81);
+            this.groupBox1.Size = new System.Drawing.Size(167, 81);
             this.groupBox1.TabIndex = 11;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "CNC Scanner";
@@ -181,17 +185,18 @@ namespace CNCscanner
             // groupBox2
             // 
             this.groupBox2.Controls.Add(this.btnDistance);
-            this.groupBox2.Controls.Add(this.comboBoxDist);
-            this.groupBox2.Location = new System.Drawing.Point(234, 41);
+            this.groupBox2.Controls.Add(this.comboArduino);
+            this.groupBox2.Controls.Add(this.button1);
+            this.groupBox2.Location = new System.Drawing.Point(191, 41);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(210, 81);
+            this.groupBox2.Size = new System.Drawing.Size(163, 108);
             this.groupBox2.TabIndex = 12;
             this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "Laser Ranger";
+            this.groupBox2.Text = "Arduino Time of Flight";
             // 
             // btnDistance
             // 
-            this.btnDistance.Location = new System.Drawing.Point(129, 25);
+            this.btnDistance.Location = new System.Drawing.Point(83, 24);
             this.btnDistance.Name = "btnDistance";
             this.btnDistance.Size = new System.Drawing.Size(70, 40);
             this.btnDistance.TabIndex = 1;
@@ -199,19 +204,19 @@ namespace CNCscanner
             this.btnDistance.UseVisualStyleBackColor = true;
             this.btnDistance.Click += new System.EventHandler(this.btnDistance_Click);
             // 
-            // comboBoxDist
+            // comboArduino
             // 
-            this.comboBoxDist.FormattingEnabled = true;
-            this.comboBoxDist.Location = new System.Drawing.Point(6, 36);
-            this.comboBoxDist.Name = "comboBoxDist";
-            this.comboBoxDist.Size = new System.Drawing.Size(100, 21);
-            this.comboBoxDist.TabIndex = 0;
+            this.comboArduino.FormattingEnabled = true;
+            this.comboArduino.Location = new System.Drawing.Point(6, 36);
+            this.comboArduino.Name = "comboArduino";
+            this.comboArduino.Size = new System.Drawing.Size(71, 21);
+            this.comboArduino.TabIndex = 0;
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(623, 58);
+            this.button1.Location = new System.Drawing.Point(83, 70);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(69, 48);
+            this.button1.Size = new System.Drawing.Size(69, 24);
             this.button1.TabIndex = 13;
             this.button1.Text = "Distance";
             this.button1.UseVisualStyleBackColor = true;
@@ -219,7 +224,7 @@ namespace CNCscanner
             // 
             // btnProgram
             // 
-            this.btnProgram.Location = new System.Drawing.Point(719, 58);
+            this.btnProgram.Location = new System.Drawing.Point(733, 60);
             this.btnProgram.Name = "btnProgram";
             this.btnProgram.Size = new System.Drawing.Size(75, 48);
             this.btnProgram.TabIndex = 14;
@@ -227,13 +232,55 @@ namespace CNCscanner
             this.btnProgram.UseVisualStyleBackColor = true;
             this.btnProgram.Click += new System.EventHandler(this.btnProgram_Click);
             // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(9, 139);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(62, 13);
+            this.label1.TabIndex = 15;
+            this.label1.Text = "Transmitted";
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(459, 139);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(53, 13);
+            this.label2.TabIndex = 16;
+            this.label2.Text = "Received";
+            // 
+            // btnHome
+            // 
+            this.btnHome.Location = new System.Drawing.Point(569, 61);
+            this.btnHome.Name = "btnHome";
+            this.btnHome.Size = new System.Drawing.Size(75, 46);
+            this.btnHome.TabIndex = 17;
+            this.btnHome.Text = "Home";
+            this.btnHome.UseVisualStyleBackColor = true;
+            this.btnHome.Click += new System.EventHandler(this.btnHome_Click);
+            // 
+            // btnFarAway
+            // 
+            this.btnFarAway.Location = new System.Drawing.Point(650, 59);
+            this.btnFarAway.Name = "btnFarAway";
+            this.btnFarAway.Size = new System.Drawing.Size(77, 47);
+            this.btnFarAway.TabIndex = 18;
+            this.btnFarAway.Text = "Far Away";
+            this.btnFarAway.UseMnemonic = false;
+            this.btnFarAway.UseVisualStyleBackColor = true;
+            this.btnFarAway.Click += new System.EventHandler(this.btnFarAway_Click);
+            // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(856, 585);
+            this.Controls.Add(this.btnFarAway);
+            this.Controls.Add(this.btnHome);
+            this.Controls.Add(this.label2);
+            this.Controls.Add(this.label1);
             this.Controls.Add(this.btnProgram);
-            this.Controls.Add(this.button1);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.btnSouth);
             this.Controls.Add(this.btnNorth);
@@ -247,6 +294,7 @@ namespace CNCscanner
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "FormMain";
             this.Text = "CNCscanner";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormMain_FormClosing);
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             this.groupBox1.ResumeLayout(false);
@@ -273,9 +321,13 @@ namespace CNCscanner
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.Button btnDistance;
-        private System.Windows.Forms.ComboBox comboBoxDist;
+        private System.Windows.Forms.ComboBox comboArduino;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Button btnProgram;
+        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Button btnHome;
+        private System.Windows.Forms.Button btnFarAway;
     }
 }
 
