@@ -32,7 +32,7 @@ using System.IO;
 using System.IO.Ports;
 using System.Threading;
 using Util.EventMessages;
-
+using System.Diagnostics;
 
 namespace CNCscanner
 { 
@@ -42,21 +42,26 @@ namespace CNCscanner
         bool isProgramRunning = false;
 
         private int xMin = 10;
-        private int xStep = 10;
+        //private int xStep = 10;
         private int xMax = 400;
         private int yMin = 10;
         private int yStep = 10;
         private int yMax = 1050;
         private int xPosition = 0;
         private int yPosition = 0;
+        private string CNCstatus = "";
 
         string distanceMM = "0";
         string building = "";
+        string xPos = "";
+        string yPos = "";
 
         public static SerialPort SerialPortCNC = new SerialPort();
         public static SerialPort SerialPortArduino = new SerialPort();
 
         private String SerialMessageCNC = "";
+
+        Stopwatch timer = new Stopwatch();
 
         private StreamWriter myFile = new StreamWriter("Scan_" + DateTime.Now.ToString("yyyyMMdd-HHmm") + ".csv", true);
 
@@ -208,29 +213,42 @@ namespace CNCscanner
             // Encoding standard
             Encoding encoding = ASCIIEncoding.GetEncoding(1252);
             
-            // If the butter is not null
+            // If the butter is not null.
+            // This is not perfect. Only processing the recently received data and
+            // not making a stream, thus some messages might be processed incomplete.
             if (_buffer != null)
             {
                 // Add to messages received so far. 
                 // This is ok for small UAT as it grows in size
                 SerialMessageCNC = encoding.GetString(_buffer);
 
-                if (SerialMessageCNC.Contains("<Home|")) { MessageBox.Show("Home");}
-                if (SerialMessageCNC.Contains("<Idle|")) { MessageBox.Show("Idle"); }
-                if (SerialMessageCNC.Contains("<Jog|")) { MessageBox.Show("Jog"); }
+                // Update CNC status
+                if (SerialMessageCNC.Contains("<Home|")) { CNCstatus = "Home";}
+                if (SerialMessageCNC.Contains("<Idle|")) { CNCstatus = "Idle"; }
+                if (SerialMessageCNC.Contains("<Jog|")) { CNCstatus = "Jog"; }
+
                 if (SerialMessageCNC.Contains("MPos:"))
                 {
                     int xpos = SerialMessageCNC.IndexOf("MPos:", 0) +5;
                     int ypos = SerialMessageCNC.IndexOf(",", xpos);
                     int yend = SerialMessageCNC.IndexOf(",", ypos+1);
-                    string xPos = SerialMessageCNC.Substring(xpos, ypos - xpos);
-                    string yPos = SerialMessageCNC.Substring(ypos+1, yend - ypos -1);
+                    if (xpos > -1 && ypos > -1 && yend > -1 && yend > ypos)
+                    {
+                        xPos = SerialMessageCNC.Substring(xpos, ypos - xpos);
+                        yPos = SerialMessageCNC.Substring(ypos + 1, yend - ypos - 1);
+
+                        long duration = timer.ElapsedMilliseconds;
+
+                        // Update the User
+                        GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", duration.ToString() + "," + xPos.ToString() + "," + yPos.ToString() + "," + distanceMM.ToString() + "\r\n"));
+
+                        // Save the current reading to disk
+                        myFile.Write(xPos.ToString() + "," + yPos.ToString() + "," + distanceMM.ToString() + "\n");
+                        myFile.Flush();
+
+                    }
                 }
-
-                // Send to mainform to show
-                GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", SerialMessageCNC));
             }
-
         }
 
         private void SerialPortArduinoDataReceived(object sender, SerialDataReceivedEventArgs e)
@@ -268,7 +286,7 @@ namespace CNCscanner
                     else if (sdata[i] == '*')
                     {
                         // End if not checking the checksum
-                        distanceMM = building + '\0';
+                        distanceMM = building;
 
                         // Update the User
                         GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("toolStripStatusLabel1", distanceMM));
@@ -289,76 +307,54 @@ namespace CNCscanner
             // We are runnign a program, so want to issue the next command
             if (isProgramRunning)
             {
-                // Pause for 2 seconds. Wait for head to move to new location
-                //DateTime _desired = DateTime.Now.AddSeconds(2);
-                //while (DateTime.Now < _desired)
-                //{
-                //    System.Windows.Forms.Application.DoEvents();
-                //}
-
-                // Send to mainform to show
-                GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", toolStripStatusLabel1.Text));
-
-                // Save the current reading to disk
-                myFile.Write(xPosition.ToString() + "," + yPosition.ToString() + "," + toolStripStatusLabel1.Text + "\n");
-                myFile.Flush();
-
-                if (xPosition == xMin && yPosition == yMin)
+                if (xPosition == xMin)
                 {
-                    xPosition += xStep;
+                    // Move to the far-side
+                    xPosition = xMax;
 
                     // Create the CNCscanner instruction
-                    string locInstruction = "$J=G90X" + xPosition.ToString() + "Y" + yPosition.ToString() + "F1917\n";
+                    string locInstruction = "$J=G90X" + xPosition.ToString() + "Y" + yPosition.ToString() + "F500\n";
 
                     // Send Serial command
                     SerialPortCNC.Write(locInstruction);
+                }
+                else if (xPosition == xMax)
+                {
+                    // Move to the near-side
+                    xPosition = xMin;
+                    yPosition += yStep;
 
+                    // Create the CNCscanner instruction
+                    string locInstruction = "$J=G90X" + xPosition.ToString() + "Y" + yPosition.ToString() + "F500\n";
+
+                    // Send Serial command
+                    SerialPortCNC.Write(locInstruction);
                 }
                 else
                 {
-                    // Increase the position
-                    if (xPosition == xMax)
-                    {
-                        // Keep xPosition fixed
-                        xPosition = xMin;
-                        yPosition += yStep;
-
-                        // Create the CNCscanner instruction
-                        string locInstruction = "$J=G90X" + xPosition.ToString() + "Y" + yPosition.ToString() + "F1917\n";
-
-                        // Send Serial command
-                        SerialPortCNC.Write(locInstruction);
-
-                        // Pause for 8 seconds. Wait for head to move to new location
-                        //_desired = DateTime.Now.AddSeconds(8);
-                        //while (DateTime.Now < _desired)
-                        //{
-                        //    System.Windows.Forms.Application.DoEvents();
-                        //}
-                    }
-                    else
-                    {
-                        // Normal horizontal update
-                        xPosition += xStep;
-
-                        // Create the CNCscanner instruction
-                        string locInstruction = "$J=G90X" + xPosition.ToString() + "Y" + yPosition.ToString() + "F1917\n";
-
-                        // Send Serial command
-                        SerialPortCNC.Write(locInstruction);
-
-                    }
+                    MessageBox.Show("Something went wrong");
                 }
 
                 if (yPosition > yMax)
                 {
-                    MessageBox.Show("Finished");
+                    // Turn off timer
+                    timer1.Enabled = false;
+                    timer2.Enabled = false;
+
+                    // Turn-off running flag
                     isProgramRunning = false;
+
+                    // Stop the stopwatch
+                    timer.Stop();
+                    
+                    // Update the User
+                    MessageBox.Show("Finished");
+
                     return;
                 }
 
                 // Send to mainform to show
-                GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", "$J=G90X" + xPosition.ToString() + "Y" + yPosition.ToString() + "F1917     "));
+                GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", "$J=G90X" + xPosition.ToString() + "Y" + yPosition.ToString() + "F500     "));
             }
 
         }
@@ -379,111 +375,69 @@ namespace CNCscanner
 
         public void ShowOnScreen(object o, GlobalEventArgs e)
         {
-            try
-            {
-                if (e.sCont == "btnConnect") { btnConnect.Invoke(new MethodInvoker(delegate { btnConnect.Text = e.sMsg; })); }
-                if (e.sCont == "btnDistance") { btnConnect.Invoke(new MethodInvoker(delegate { btnDistance.Text = e.sMsg; })); }
-                if (e.sCont == "btnProgram") { btnConnect.Invoke(new MethodInvoker(delegate { btnProgram.Text = e.sMsg; })); }
+            if (e.sCont == "btnConnect") { btnConnect.Invoke(new MethodInvoker(delegate { btnConnect.Text = e.sMsg; })); }
+            if (e.sCont == "btnDistance") { btnConnect.Invoke(new MethodInvoker(delegate { btnDistance.Text = e.sMsg; })); }
+            if (e.sCont == "btnProgram") { btnConnect.Invoke(new MethodInvoker(delegate { btnProgram.Text = e.sMsg; })); }
 
-                if (e.sCont == "textBoxMessages") { textBoxMessages.Invoke(new MethodInvoker(delegate { textBoxMessages.AppendText(e.sMsg + '\n'); })); }
-                if (e.sCont == "toolStripStatusLabel1") { toolStripStatusLabel1.Text = e.sMsg; }
-            }
-            catch
-            {
-
-            }
-
+            if (e.sCont == "textBoxMessages") { textBoxMessages.Invoke(new MethodInvoker(delegate { textBoxMessages.AppendText(e.sMsg + '\n'); })); }
+            //if (e.sCont == "toolStripStatusLabel1") { toolStripStatusLabel1.Invoke(new MethodInvoker(delegate { toolStripStatusLabel2.Text = e.sMsg; })); }
+            //if (e.sCont == "toolStripStatusLabel2") { toolStripStatusLabel2.Text = e.sMsg; }
+           
             Application.DoEvents();
         }
 
         private void btnEast_Click(object sender, EventArgs e)
         {
-            // Want to send command to CNCscanner
-            // Move East 1.0 points
-            // $J=G91X1.0F1917
-
             // If the com port has been closed, do nothing
-            if (!SerialPortCNC.IsOpen)
-            {
-                return;
-            }
+            if (!SerialPortCNC.IsOpen) return;
 
             // Send Serial command
-            SerialPortCNC.Write("$J=G91X20F1917\n");
+            SerialPortCNC.Write("$J=G91X20F500\n");
 
             // Send to mainform to show
-            GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", "$J = G91X20F1917     "));
+            GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", "$J = G91X20F500     "));
         }
 
         private void btnWest_Click(object sender, EventArgs e)
         {
-            // Want to send command to CNCscanner
-            // Move West 1.0 points
-            // $J=G91X-1.0F1917
-
             // If the com port has been closed, do nothing
-            if (!SerialPortCNC.IsOpen)
-            {
-                return;
-            }
+            if (!SerialPortCNC.IsOpen) return;
 
             // Send Serial command
-            SerialPortCNC.Write("$J=G91X-20F1917\n");
+            SerialPortCNC.Write("$J=G91X-20F500\n");
 
             // Send to mainform to show
-            GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", "$J = G91X-20F1917     "));
+            GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", "$J = G91X-20F500     "));
         }
 
         private void btnNorth_Click(object sender, EventArgs e)
         {
-            // Want to send command to CNCscanner
-            // Move North 1.0 points
-            // $J=G91Y1.0F1917
-
             // If the com port has been closed, do nothing
-            if (!SerialPortCNC.IsOpen)
-            {
-                return;
-            }
+            if (!SerialPortCNC.IsOpen) return;
 
             // Send Serial command
-            SerialPortCNC.Write("$J=G91Y20F1917\n");
+            SerialPortCNC.Write("$J=G91Y20F500\n");
 
             // Send to mainform to show
-            GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", "$J = G91Y20F1917     "));
+            GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", "$J = G91Y20F500     "));
         }
 
         private void btnSouth_Click(object sender, EventArgs e)
         {
-            // Want to send command to CNCscanner
-            // Move South 1.0 points
-            // $J=G91Y-1.0F1917
-
             // If the com port has been closed, do nothing
-            if (!SerialPortCNC.IsOpen)
-            {
-                return;
-            }
+            if (!SerialPortCNC.IsOpen) return;
 
             // Send Serial command
-            SerialPortCNC.Write("$J=G91Y-20F1917\n");
+            SerialPortCNC.Write("$J=G91Y-20F500\n");
 
             // Send to mainform to show
-            GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", "$J = G91Y-20F1917     "));
+            GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", "$J = G91Y-20F500     "));
         }
-
 
         private void btnHome_Click(object sender, EventArgs e)
         {
-            // Want to send command to CNCscanner
-            // Move East 1.0 points
-            // $J=G91X1.0F1917
-
             // If the com port has been closed, do nothing
-            if (!SerialPortCNC.IsOpen)
-            {
-                return;
-            }
+            if (!SerialPortCNC.IsOpen) return;
 
             // Send Serial command
             SerialPortCNC.Write("$H\n");
@@ -494,23 +448,15 @@ namespace CNCscanner
 
         private void btnFarAway_Click(object sender, EventArgs e)
         {
-            // Want to send command to CNCscanner
-            // Move East 1.0 points
-            // $J=G91X1.0F1917
-
             // If the com port has been closed, do nothing
-            if (!SerialPortCNC.IsOpen)
-            {
-                return;
-            }
+            if (!SerialPortCNC.IsOpen) return;
 
             // Send Serial command
-            SerialPortCNC.Write("$J=G90X390Y370F1917\n");
+            SerialPortCNC.Write("$J=G90X390Y370F500\n");
 
             // Send to mainform to show
-            GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", "$J=G90X390Y370F1917     "));
+            GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", "$J=G90X390Y370F500     "));
         }
-
 
         // ------------------------------------------------------------------------------------------------------------
 
@@ -528,19 +474,6 @@ namespace CNCscanner
             }
         }
 
-        private void button1_Click(object sender, EventArgs e)
-        {
-            // If the com port has been closed, do nothing
-            if (!SerialPortArduino.IsOpen)
-            {
-                return;
-            }
-
-            // Take a reading
-            // Send Serial command
-            SerialPortArduino.Write("r");
-        }
-
         private void btnProgram_Click(object sender, EventArgs e)
         {
             // This is the program
@@ -549,16 +482,24 @@ namespace CNCscanner
             // Turn on timer
             if (timer1.Enabled)
             {
-                // Turn off timer
+                // Turn off timers
                 timer1.Enabled = false;
+                timer2.Enabled = false;
+
+                // Stop timer
+                timer.Stop();
 
                 // Change the button text to "disconnect"
                 GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("btnProgram", "Program"));
             }
             else
             {
-                // Turn on timer
+                // Turn on timers
                 timer1.Enabled = true;
+                timer2.Enabled = true;
+
+                // Start the stopwatch
+                timer.Start();
 
                 // Change the button text to "disconnect"
                 GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("btnProgram", "Stop"));
@@ -572,7 +513,7 @@ namespace CNCscanner
             if (SerialPortCNC.IsOpen)
             {
                 // Create the CNCscanner instruction
-                string locInstruction = "$J=G90X" + xPosition.ToString() + "Y" + yPosition.ToString() + "F1917\n";
+                string locInstruction = "$J=G90X" + xPosition.ToString() + "Y" + yPosition.ToString() + "F500\n";
 
                 // Send Serial command
                 SerialPortCNC.Write(locInstruction);
@@ -665,8 +606,12 @@ namespace CNCscanner
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            // Move the head if required
-            MoveCNC();
+            // If the CNC is not doing anything
+            if (CNCstatus == "Idle")
+            {
+                // Move the head if required
+                MoveCNC();
+            }
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -679,6 +624,12 @@ namespace CNCscanner
 
             // Send to mainform to show
             GlobalEventMessages.OnGlobalEvent(new GlobalEventArgs("textBoxMessages", "?     "));
+        }
+
+        private void timer2_Tick(object sender, EventArgs e)
+        {
+            // Send Serial command to get status of the CNC
+            SerialPortCNC.Write("?\n");
         }
     }
 }
